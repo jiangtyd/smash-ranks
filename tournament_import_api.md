@@ -3,13 +3,11 @@
 ##Upload bracket: 
  - `POST /[region]/tournament/`
     - Body: Tourney name; Bracket type; Challonge link or (TIO file contents and bracket name)
-    - for TIO: save into tmp directory
-    - insert pickle of `Scraper` into `pending_scrapers` collection
-    - for TIO: delete file in tmp directory
+    - Create `PendingTournament` from relevant `Scraper`; save this in the `pending_tournaments` collection
     - return: 
         ```
         {
-          id: ObjectId of Scraper,
+          id: ObjectId of PendingTournament,
           unknown_aliases: [ 
             { alias: "", suggestions: [] }
           ],
@@ -18,12 +16,11 @@
         ```
 
 ##Merge aliases:
- - `POST /[region]/tournament/aliases`
-    - body: `{ scraper_id: scraper_id, new_aliases: [ { new_player: bool, alias: ""} ] }`
+ - `POST /[region]/tournament/pending/[pending_tournament_id]/aliases`
+    - body: `{ new_aliases: [ { new_player: bool, alias: ""} ] }`
     - for each unknown player: if new, create new player with given alias. otherwise, merge player.
     - Put all these into a map (`alias -> player id`). Extend this map with known players.
-    - create new `Tournament` object out of unpickled `Scraper` + (`alias -> player id`) map.
-    - save `Tournament` to `pending_tournaments` collection. delete used `Scraper` from `pending_scrapers`.
+    - Save `alias_to_id_map` into the `PendingTournament` specified by `[pending_tournament_id]`.
     - return success
 
 ##Manual cleanup: 
@@ -35,5 +32,6 @@ Probably...
  - `GET /[region]/tournaments/pending`
 
 ##Finalize:
- - `POST /[region]/tournaments/pending/[tournament_id]/finalize`
+ - `POST /[region]/tournaments/pending/[pending_tournament_id]/finalize`
+    - create a `Tournament` from the `PendingTournament` and `alias_to_id_map`. Save in `tournaments` collection.
     - computes new ranking!
