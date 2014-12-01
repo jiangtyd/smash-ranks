@@ -2,6 +2,7 @@ from pymongo import MongoClient, DESCENDING
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from model import *
+import re
 import trueskill
 
 DEFAULT_RATING = TrueskillRating()
@@ -60,6 +61,21 @@ class Dao(object):
         '''Converts alias to lowercase'''
         return [Player.from_json(p) for p in self.players_col.find({'aliases': {'$in': [alias.lower()]}})]
 
+    special_chars = re.compile("[^\w\s]*")
+    def get_player_jsons_with_similar_alias_from_all_regions(self, alias):
+        alias_lower = alias.lower()
+        similar_aliases = [
+            alias_lower,
+            alias_lower.replace(" ", ""), # remove spaces
+            re.sub(special_chars, '', alias_lower), # remove special characters
+            # remove everything before the last special character; hopefully removes crew/sponsor tags
+            re.split(special_chars, alias_lower)[-1].strip()
+        ]
+        return self.players_col.find({'aliases': {'$in': similar_aliases}})
+
+    def get_players_with_similar_alias_from_all_regions(self, alias):
+        return [Player.from_json(self.get_player_jsons_with_similar_alias_from_all_regions)]
+
     def get_player_id_map_from_player_aliases(self, aliases):
         '''Given a list of player aliases, returns a map that maps player aliases -> player ids for the current
         region. If no player can be found, returns a map from alias -> None.'''
@@ -74,6 +90,32 @@ class Dao(object):
             player_alias_to_player_id_map[alias] = id
 
         return player_alias_to_player_id_map
+
+    # give suggestions (in the form of Player jsons) for unknown aliases
+    def get_player_suggestions_from_player_aliases(self, aliases):
+        alias_to_suggestion_map = {}
+
+        for alias in aliases:
+            player = self.get_player_by_alias(alias)
+            if player is None:
+                alias_to_suggestion_map[alias] = self.get_players_jsons_with_similar_alias_from_all_regions(alias)
+
+        return alias_to_suggestion_map
+
+    def get_player_or_suggestions_from_player_aliases(self, aliases):
+        alias_to_player_or_suggestions_map = {}
+
+        for alias in aliases:
+            player = self.get_player_by_alias(alias)
+            if player is None:
+                alias_to_player_or_suggestions_map[alias] = {
+                    "player": None,
+                    "suggestions": self.get_players_jsons_with_similar_alias_from_all_regions(alias)
+                }
+            else:
+                alias_to_player_or_suggestions_map[alias] = {"player": player, "suggestions": []}
+
+        return alias_to_player_or_suggestions_map
 
     # TODO this currently gets players for the current region.
     # TODO add another function that explicitly gets all players in the db
@@ -120,9 +162,12 @@ class Dao(object):
     def update_pending_tournament(self, tournament):
         return self.pending_tournaments_col.update({'_id': tournament.id}, tournament.get_json_dict())
 
-    def get_all_pending_tournaments(self, regions=None):
+    def get_all_pending_tournament_jsons(self, regions=None):
         query_dict = {'regions': {'$in': regions}} if regions else {}
-        return [PendingTournament.from_json(t) for t in self.pending_tournaments_col.find(query_dict).sort([('date', 1)])]
+        return self.pending_tournaments_col.find(query_dict).sort([('date', 1)])
+
+    def get_all_pending_tournaments(self, regions=None):
+        return [PendingTournament.from_json(t) for t in self.get_all_pending_tournament_jsons(regions)]
 
     def get_pending_tournament_by_id(self, id):
         '''id must be an ObjectId'''

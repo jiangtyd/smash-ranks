@@ -306,6 +306,9 @@ class PendingTournament(object):
     def add_alias_id_mapping(self, alias, _id):
         self.alias_to_id_map[alias] = _id
 
+    def are_all_aliases_mapped(self):
+        return len(self.alias_to_id_map) == len(self.players)
+
     @classmethod
     def from_scraper(cls, type, scraper, region_id):
         players = scraper.get_players()
