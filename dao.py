@@ -2,7 +2,6 @@ from pymongo import MongoClient, DESCENDING
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from model import *
-import re
 import trueskill
 
 DEFAULT_RATING = TrueskillRating()
@@ -116,7 +115,7 @@ class Dao(object):
         return self.update_player(player)
 
     def insert_pending_tournament(self, tournament):
-        return self.pending_tournaments_col.insert({'tournament': tournament.get_json_dict()})
+        return self.pending_tournaments_col.insert(tournament.get_json_dict())
 
     def update_pending_tournament(self, tournament):
         return self.pending_tournaments_col.update({'_id': tournament.id}, tournament.get_json_dict())
@@ -153,7 +152,7 @@ class Dao(object):
         if query_list:
             query_dict['$and'] = query_list
 
-        return self.tournaments_col.find(query_dict, {'_id': 1}).sort([('date', 1)])
+        return self.tournaments_col.find(query_dict).sort([('date', 1)])
 
     def get_all_tournament_ids(self, players=None, regions=None):
         return [t['_id'] for t in self.get_all_tournament_records(players, regions)]

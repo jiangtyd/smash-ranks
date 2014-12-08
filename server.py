@@ -36,6 +36,13 @@ matches_get_parser.add_argument('opponent', type=str)
 rankings_get_parser = reqparse.RequestParser()
 rankings_get_parser.add_argument('generateNew', type=str)
 
+tournament_import_parser = reqparse.RequestParser()
+tournament_import_parser.add_argument('tournament_name', type=str, required=True, location='form', help="Tournament must have a name.")
+tournament_import_parser.add_argument('bracket_type', type=str, required=True, location='form', help="Bracket must have a type.")
+tournament_import_parser.add_argument('challonge_url', type=str, location='form')
+tournament_import_parser.add_argument('tio_file', type=str, location='form')
+tournament_import_parser.add_argument('tio_bracket_name', type=str, location='form')
+
 class InvalidAccessToken(Exception):
     pass
 
@@ -162,16 +169,9 @@ class TournamentResource(restful.Resource):
 
         return return_dict
 
-class TournamentImportResource(restful.Resource):
     def post(self, region):
         dao = Dao(region, mongo_client=mongo_client)
-        parser = reqparse.RequestParser()
-        parser.add_argument('tournament_name', type=str, required=True, location='form', help="Tournament must have a name.")
-        parser.add_argument('bracket_type', type=str, required=True, location='form', help="Bracket must have a type.")
-        parser.add_argument('challonge_url', type=str, location='form')
-        parser.add_argument('tio_file', type=FileStorage, location='files')
-        parser.add_argument('tio_bracket_name', type=str, location='form')
-        args = parser.parse_args()
+        args = tournament_import_parser.parse_args()
 
         try:
             tournament_name = args['tournament_name']
@@ -229,7 +229,7 @@ class PendingTournamentListResource(restful.Resource):
             t['date'] = t['date'].strftime("%x")
             # whether all aliases have been mapped to players or not
             # necessary condition for the tournament to be ready to be finalized
-            t['alias_mapping_finished'] = (len(t['alias_to_id_map']) == len(t['players']))
+            t['alias_mapping_finished'] = t.are_all_aliases_mapped()
 
             # remove extra fields
             del t['raw']
@@ -318,7 +318,6 @@ api.add_resource(PlayerListResource, '/<string:region>/players')
 api.add_resource(PlayerResource, '/<string:region>/players/<string:id>')
 api.add_resource(TournamentListResource, '/<string:region>/tournaments')
 api.add_resource(TournamentResource, '/<string:region>/tournaments/<string:id>')
-api.add_resource(TournamentImportResource, '/<string:region>/tournaments/new')
 api.add_resource(PendingTournamentListResource, '/<string:region>/tournaments/pending')
 api.add_resource(RankingsResource, '/<string:region>/rankings')
 api.add_resource(MatchesResource, '/<string:region>/matches/<string:id>')
