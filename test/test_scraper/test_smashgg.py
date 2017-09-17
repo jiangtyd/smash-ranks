@@ -150,8 +150,8 @@ class TestSmashGGScraper(unittest.TestCase):
         self.assertEqual(date.day, 26)
 
     def test_get_name(self):
-        self.assertEqual(self.tournament1.get_name(), 'htc throwdown')
-        self.assertEqual(self.tournament2.get_name(), 'tiger smash 4')
+        self.assertEqual(self.tournament1.get_name(), 'HTC Throwdown')
+        self.assertEqual(self.tournament2.get_name(), 'Tiger Smash 4')
 
     def test_duplicate_tags(self):
         tags = self.tournament1.get_players()
@@ -169,9 +169,10 @@ class TestSmashGGScraper(unittest.TestCase):
         self.assertEqual(SmashGGScraper.get_tournament_phase_id_from_url(TEST_URL_1), 6529)
         self.assertEqual(SmashGGScraper.get_tournament_phase_id_from_url(TEST_URL_2), 70949)
 
-    def test_get_tournament_name_from_url(self):
-        self.assertEqual(SmashGGScraper.get_tournament_name_from_url(TEST_URL_1), 'htc throwdown')
-        self.assertEqual(SmashGGScraper.get_tournament_name_from_url(TEST_URL_2), 'tiger smash 4')
+    def test_get_tournament_name(self):
+        self.assertEqual(SmashGGScraper.get_tournament_name(TEST_EVENT_NAME_1), 'HTC Throwdown')
+        self.assertEqual(SmashGGScraper.get_tournament_name(TEST_EVENT_NAME_2), 'Tiger Smash 4')
+        self.assertEqual(SmashGGScraper.get_tournament_name(TEST_EVENT_NAME_3), 'Nebulous Prime Melee #47')
 
     def test_get_event_name(self):
         self.assertEqual(SmashGGScraper.get_event_name(TEST_EVENT_NAME_1, TEST_PHASE_NAME_1), 'Melee Singles')

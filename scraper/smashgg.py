@@ -4,6 +4,7 @@ from model import AliasMatch
 
 # SMASHGG URLS:
 # https://smash.gg/tournament/<tournament-name>/brackets/<event-id>/<phase-id>/<phase-group-id>/
+TOURNAMENT_URL = "https://api.smash.gg/tournament/%s"
 PHASE_URL = "https://api.smash.gg/phase/%s?expand[0]=groups"
 EVENT_URL = "https://api.smash.gg/tournament/%s/event/%s?expand[0]=groups&expand[1]=entrants"
 GROUP_URL = "https://api.smash.gg/phase_group/%s?expand[0]=sets&expand[1]=entrants&expand[2]=matches&expand[3]=seeds" # noqa
@@ -40,11 +41,12 @@ class SmashGGScraper(object):
             self.path)
         self.phase_name = SmashGGScraper.get_tournament_phase_name_from_url(
             self.path)
-        self.name = SmashGGScraper.get_tournament_name_from_url(self.path)
 
         # DEFINE OUR TARGET URL ENDPOINT FOR THE SMASHGG API
         # AND INSTANTIATE THE DICTIONARY THAT HOLDS THE RAW
         # JSON DUMPED FROM THE API
+
+        self.name = SmashGGScraper.get_tournament_name(self.event_name)
 
         self.event_dict = SmashGGScraper.get_event_dict(self.event_name, self.phase_name)
 
@@ -245,16 +247,10 @@ class SmashGGScraper(object):
         return int(id)
 
     @staticmethod
-    def get_tournament_name_from_url(url):
-        """
-        Parses a url and retrieves the name of the tournament in question
-        :param url: url to parse the tournament name from
-        :return: the name of the tournament in question
-        """
-        tStr = 'tournament/'
-        startIndex = url.rfind(tStr) + len(tStr)
-        name = url[startIndex: url.index('/', startIndex)]
-        return name.replace('-', ' ')
+    def get_tournament_name(event_name):
+        tournament_raw = check_for_200(requests.get(TOURNAMENT_URL % event_name)).json()
+        tournament_name = tournament_raw['entities']['tournament']['name']
+        return tournament_name
 
     @staticmethod
     def get_event_dict(event_name, phase_name):
@@ -262,10 +258,10 @@ class SmashGGScraper(object):
 
     @staticmethod
     def get_group_dict(group_id):
-        dict = check_for_200(requests.get(GROUP_URL % group_id)).json()
-        hasSets = dict['entities']['groups']['hasSets']
+        group_raw = check_for_200(requests.get(GROUP_URL % group_id)).json()
+        hasSets = group_raw['entities']['groups']['hasSets']
         if hasSets is True:
-            return dict
+            return group_raw
 
     @staticmethod
     def get_event_name(event_name, phase_name):
