@@ -4,6 +4,7 @@
 set -e # Exit script immediately on first error.
 
 echo "Updating..."
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FF3997E83CD969B409FB24BC5BB92C09DB82666C
 sudo add-apt-repository ppa:fkrull/deadsnakes-python2.7 # get newest version of python 2.7
 sudo apt-get update
 sudo apt-get upgrade -y
