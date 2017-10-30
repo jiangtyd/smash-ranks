@@ -37,10 +37,8 @@ class SmashGGScraper(object):
             print p
 
         # GET IMPORTANT DATA FROM THE URL
-        self.event_name = SmashGGScraper.get_tournament_event_name_from_url(
-            self.path)
-        self.phase_name = SmashGGScraper.get_tournament_phase_name_from_url(
-            self.path)
+        self.event_name = SmashGGScraper.get_tournament_event_name_from_url(self.path)
+        self.phase_name = SmashGGScraper.get_tournament_phase_name_from_url(self.path)
 
         # DEFINE OUR TARGET URL ENDPOINT FOR THE SMASHGG API
         # AND INSTANTIATE THE DICTIONARY THAT HOLDS THE RAW
@@ -52,16 +50,13 @@ class SmashGGScraper(object):
 
         self.group_ids = SmashGGScraper.get_group_ids_from_phase_ids(self.included_phases)
 
-        self.group_dicts = [SmashGGScraper.get_group_dict(
-            group_id) for group_id in self.group_ids]
+        self.group_dicts = [SmashGGScraper.get_group_dict(group_id) for group_id in self.group_ids]
         # REMOVE EMPTY PHASES FROM IMPORT
-        self.group_dicts = [
-            dict for dict in self.group_dicts if dict is not None]
+        self.group_dicts = [dict for dict in self.group_dicts if dict is not None]
 
         # DATA STRUCTURES THAT HOLD IMPORTANT THINGS
         self.get_smashgg_players()
-        self.player_lookup = {
-            player.entrant_id: player for player in self.players}
+        self.player_lookup = {player.entrant_id: player for player in self.players}
 
         self.date = datetime.datetime.now()
         self.get_smashgg_matches()
@@ -118,6 +113,27 @@ class SmashGGScraper(object):
 
         return return_matches
 
+    def get_matches_pretty(self):
+
+        return_matches = []
+        for match in self.matches:
+            winner = self.player_lookup.get(match.winner_id)
+            loser = self.player_lookup.get(match.loser_id)
+
+            if winner is None:
+                print 'Error: id {} not found in player list'.format(match.winner_id)
+                continue
+
+            if loser is None:
+                print 'Error: id {} not found in player list'.format(match.loser_id)
+                continue
+
+            return_match = { 'winner': winner.smash_tag, 'loser': loser.smash_tag,
+                    'winnerScore': match.winnerScore, 'loserScore': match.loserScore }
+            return_matches.append(return_match)
+
+        return return_matches
+
 # END OF SCRAPER API
 
     def get_smashgg_players(self):
@@ -161,7 +177,12 @@ class SmashGGScraper(object):
         self.matches = []
         grand_finals_matches = []
         for group_dict in self.group_dicts:
+            round_matches = []
             for match in group_dict['entities']['sets']:
+
+                entrant1_id = match['entrant1Id']
+                entrant2_id = match['entrant2Id']
+
                 winner_id = match['winnerId']
                 loser_id = match['loserId']
                 # CHECK FOR A BYE
@@ -187,16 +208,28 @@ class SmashGGScraper(object):
                     round_name = match.get("fullRoundText", None)
                     round_num = match.get("round", None)
                     best_of = match.get("bestOf", None)
+                    match_identifier = match.get("identifier", "")
                 except:
                     print 'Could not find extra details for match'
 
+                if winner_id == entrant1_id:
+                    winner_score = entrant1_score
+                    loser_score = entrant2_score
+                else:
+                    winner_score = entrant2_score
+                    loser_score = entrant1_score
+
                 smashgg_match = SmashGGMatch(
-                    round_name, winner_id, loser_id, round_num, best_of)
+                    round_name, winner_id, loser_id, round_num, best_of, winner_score, loser_score, match_identifier)
+
 
                 if match['isGF']:
                     grand_finals_matches.append(smashgg_match)
                 else:
-                    self.matches.append(smashgg_match)
+                    round_matches.append(smashgg_match)
+
+            sort(round_matches, key=lambda x: x.match_identifier)
+            self.matches.extend(round_matches)
 
         self.matches.extend(grand_finals_matches)
 
@@ -254,10 +287,12 @@ class SmashGGScraper(object):
 
     @staticmethod
     def get_event_dict(event_name, phase_name):
+        print EVENT_URL % (event_name, phase_name)
         return check_for_200(requests.get(EVENT_URL % (event_name, phase_name))).json()
 
     @staticmethod
     def get_group_dict(group_id):
+        print GROUP_URL % group_id
         group_raw = check_for_200(requests.get(GROUP_URL % group_id)).json()
         hasSets = group_raw['entities']['groups']['hasSets']
         if hasSets is True:
@@ -354,7 +389,7 @@ class SmashGGPlayer(object):
 
 class SmashGGMatch(object):
 
-    def __init__(self, roundName, winner_id, loser_id, roundNumber, bestOf):
+    def __init__(self, roundName, winner_id, loser_id, roundNumber, bestOf, winnerScore, loserScore, match_identifier):
         """
         :param winner_id: Entrant id of the winner of the match
         :param loser_id:  Entrant id of the loser of the match
@@ -366,6 +401,9 @@ class SmashGGMatch(object):
         self.loser_id = loser_id
         self.roundNumber = roundNumber
         self.bestOf = bestOf
+        self.winnerScore = winnerScore
+        self.loserScore = loserScore
+        self.match_identifier = match_identifier
 
 
 class SmashGGEvent(object):
