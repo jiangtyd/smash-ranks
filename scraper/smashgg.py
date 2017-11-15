@@ -228,7 +228,7 @@ class SmashGGScraper(object):
                 else:
                     round_matches.append(smashgg_match)
 
-            sort(round_matches, key=lambda x: x.match_identifier)
+            round_matches.sort(key=lambda x: x.match_identifier)
             self.matches.extend(round_matches)
 
         self.matches.extend(grand_finals_matches)
